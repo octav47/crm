@@ -1,0 +1,6 @@
+extends ../node_modules/allcountjs/views/project/card-board
+block panelBody
+    .panel-body
+        h4 {{item.name}}
+        p {{item.company}}
+        p {{item.lastContactDate | date}}

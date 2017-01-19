@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "author": "Kirill Tribunsky",
   "dependencies": {
-    "allcountjs": "^1.14.5"
+    "allcountjs": "^1.24.1"
   },
   "scripts": {
     "start": "./node_modules/.bin/allcountjs --app app-config --db localhost:27017"
