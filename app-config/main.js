@@ -43,7 +43,7 @@ A.app({
                     // subscription: Fields.multiReference('Абонементы', 'Subscription'),
                     status: Fields.checkbox('Активен'),
                     purchases: Fields.relation('Покупки', 'Purchase', 'client'),
-                    bonus: Fields.integer('Бонусы').computed('sum(purchases.value)')
+                    bonus: Fields.integer('Бонусы').computed('sum(purchases.bonus)')
                 },
                 views: {
                     Client: {
@@ -66,14 +66,19 @@ A.app({
                     expireDate: Fields.date('Дата окончания'),
                     client: Fields.reference('Клиент', 'Client').required(),
                     subscription: Fields.reference('Покупка', 'Subscription').required(),
-                    value: Fields.integer('Стоимость').readOnly()
+                    value: Fields.integer('Стоимость').readOnly(),
+                    bonus: Fields.integer('Бонус за покупку').readOnly()
                 },
                 beforeSave: function (Entity, Crud) {
                     return Crud.crudFor('Subscription')
                         .readEntity(Entity.subscription.id)
                         .then(function (item) {
                             Entity.value = item.value;
+                            Entity.bonus = item.value * 0.1;
                         });
+                },
+                afterSave: function (Entity, Crud) {
+
                 }
             }
         }
