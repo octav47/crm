@@ -1,0 +1,12 @@
+{
+  "name": "cusdevcem-allcount",
+  "version": "1.0.0",
+  "author": "Kirill Tribunsky",
+  "dependencies": {
+    "allcountjs": "^1.14.5"
+  },
+  "scripts": {
+    "start": "./node_modules/.bin/allcountjs --app app-config --db localhost:27017"
+  },
+  "allcountjsTemplate": "twenty-two-lines"
+}
