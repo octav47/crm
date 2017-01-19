@@ -1,7 +1,7 @@
 A.app({
     appName: 'CRM DD',
     appIcon: 'phone',
-    onlyAuthenticated: false,
+    onlyAuthenticated: true,
     menuItems: [
         {
             name: 'Клиенты',
