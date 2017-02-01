@@ -81,7 +81,8 @@ A.app({
             Subscription: {
                 fields: {
                     name: Fields.text('Название').required(),
-                    description: Fields.text('Описание').required(),
+                    description: Fields.text('Описание'),
+                    duration: Fields.integer('Длительность в днях').required(),
                     value: Fields.integer('Стоимость').required()
                 },
                 referenceName: 'name'
@@ -89,7 +90,7 @@ A.app({
             Purchase: {
                 fields: {
                     date: Fields.date('Дата покупки').required(),
-                    expireDate: Fields.date('Дата окончания'),
+                    expireDate: Fields.date('Дата окончания').readOnly(),
                     client: Fields.reference('Клиент', 'Client').required(),
                     subscription: Fields.reference('Покупка', 'Subscription').required(),
                     group: Fields.reference('Группа', 'Group'),
@@ -102,6 +103,10 @@ A.app({
                         .then(function (item) {
                             Entity.value = item.value;
                             Entity.bonus = item.value * 0.1;
+                            var expireDate = Entity.date;
+                            expireDate = new Date(expireDate);
+                            expireDate.setDate(expireDate.getDate() + item.duration);
+                            Entity.expireDate = expireDate;
                         });
                 },
                 afterSave: function (Entity, Crud) {
