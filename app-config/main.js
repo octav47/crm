@@ -51,8 +51,9 @@ A.app({
             // },
             Group: {
                 fields: {
-                    name: Fields.text('Название').required()
-                    // clients: Fields.relation('Ученики', 'Client', 'group'),
+                    name: Fields.text('Название').required(),
+                    clients: Fields.textarea('Ученики').readOnly(),
+                    clientsCount: Fields.integer('Количество учеников').readOnly()
                     // teacher: Fields.relation('Преподаватели', 'Teacher', 'groups')
                 },
                 referenceName: 'name'
@@ -69,7 +70,9 @@ A.app({
                     status: Fields.checkbox('Активен'),
                     purchases: Fields.relation('Покупки', 'Purchase', 'client'),
                     bonus: Fields.integer('Бонусы').computed('sum(purchases.bonus)'),
-                    group: Fields.multiReference('Группы', 'Group', 'clients')
+                    group: Fields.reference('Группы', 'Group').readOnly(),
+                    groupExtra: Fields.reference('Дополнительная группа', 'Group').readOnly(),
+                    groupExtra2: Fields.reference('Дополнительная группа', 'Group').readOnly()
                 },
                 views: {
                     Client: {
@@ -109,10 +112,70 @@ A.app({
                             Entity.expireDate = expireDate;
                         });
                 },
-                afterSave: function (Entity, Crud) {
+                afterSave: function (Entity, Crud, Console) {
+                    return Crud.crudFor('Client')
+                        .readEntity(Entity.client.id)
+                        .then(function (item) {
+                            var entityGroupId = Entity.group.id;
+                            if (item.group && item.group.id == entityGroupId ||
+                                item.groupExtra && item.groupExtra.id == entityGroupId ||
+                                item.groupExtra2 && item.groupExtra2.id == entityGroupId) {
+                                // клиент уже посещает группу
+                            } else {
+                                if (!item.group) {
+                                    Crud.crudFor('Client').updateEntity({
+                                        id: item.id,
+                                        group: Entity.group
+                                    })
+                                } else if (!item.groupExtra) {
+                                    Crud.crudFor('Client').updateEntity({
+                                        id: item.id,
+                                        groupExtra: Entity.group
+                                    })
+                                } else if (!item.groupExtra2) {
+                                    Crud.crudFor('Client').updateEntity({
+                                        id: item.id,
+                                        groupExtra2: Entity.group
+                                    })
+                                }
+                            }
 
+                            Crud.crudFor('Group')
+                                .readEntity(entityGroupId)
+                                .then(function (item) {
+                                    var clients = item.clients;
+                                    var currentClientName = Entity.client.name;
+                                    if (clients) {
+                                        if (clients.indexOf(Entity.client.name) > -1) {
+                                            // клиент есть в списке группы
+                                        } else {
+                                            clients += currentClientName + '\n';
+                                        }
+                                    } else {
+                                        clients = currentClientName + '\n';
+                                    }
+                                    Crud.crudFor('Group').updateEntity({
+                                        id: item.id,
+                                        clients: clients,
+                                        clientsCount: GroupService.getClientsCount(item)
+                                    });
+                                })
+                        })
                 }
             }
         }
     }
 });
+
+var GroupService = {
+    getClientsCount: function (clientsTextAreaValue) {
+        var clientsNames = clientsTextAreaValue.split('\n');
+        var result = [];
+        for (var e of clientsNames) {
+            if (e != '') {
+                result.push(e);
+            }
+        }
+        return result.length;
+    }
+};
