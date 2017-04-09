@@ -3,11 +3,11 @@ A.app({
     appIcon: 'phone',
     onlyAuthenticated: false,
     menuItems: [
-        // {
-        //     name: 'Преподаватели',
-        //     entityTypeId: 'Teacher',
-        //     icon: 'user'
-        // },
+        {
+            name: 'Преподаватели',
+            entityTypeId: 'Teacher',
+            icon: 'user'
+        },
         {
             name: 'Группы',
             entityTypeId: 'Group',
@@ -41,20 +41,20 @@ A.app({
     ],
     entities: function (Fields) {
         return {
-            // Teacher: {
-            //     fields: {
-            //         name: Fields.text('ФИО').required(),
-            //         phone: Fields.text('Телефон'),
-            //         groups: Fields.reference('Группы', 'Group')
-            //     },
-            //     referenceName: 'name'
-            // },
+            Teacher: {
+                fields: {
+                    name: Fields.text('ФИО').required(),
+                    phone: Fields.text('Телефон'),
+                    groups: Fields.reference('Группы', 'Group')
+                },
+                referenceName: 'name'
+            },
             Group: {
                 fields: {
                     name: Fields.text('Название').required(),
                     clients: Fields.textarea('Ученики').readOnly(),
-                    clientsCount: Fields.integer('Количество учеников').readOnly()
-                    // teacher: Fields.relation('Преподаватели', 'Teacher', 'groups')
+                    clientsCount: Fields.integer('Количество учеников').readOnly(),
+                    teacher: Fields.relation('Преподаватели', 'Teacher', 'groups')
                 },
                 referenceName: 'name'
             },
@@ -72,7 +72,8 @@ A.app({
                     bonus: Fields.integer('Бонусы').computed('sum(purchases.bonus)'),
                     group: Fields.reference('Группы', 'Group').readOnly(),
                     groupExtra: Fields.reference('Дополнительная группа', 'Group').readOnly(),
-                    groupExtra2: Fields.reference('Дополнительная группа', 'Group').readOnly()
+                    groupExtra2: Fields.reference('Дополнительная группа', 'Group').readOnly(),
+                    debt: Fields.integer('Долг')
                 },
                 views: {
                     Client: {
@@ -88,6 +89,15 @@ A.app({
                     duration: Fields.integer('Длительность в днях').required(),
                     value: Fields.integer('Стоимость').required()
                 },
+                afterSave: function (Entity, Crud, Console) {
+                    return Crud.crudFor('Subscription')
+                        .readEntity(Entity.id)
+                        .then(function (item) {
+                            if (Entity.name.indexOf('[' + Entity.value + ']') === -1) {
+                                Entity.name += ' [' + Entity.value + ']';
+                            }
+                        })
+                },
                 referenceName: 'name'
             },
             Purchase: {
@@ -98,6 +108,7 @@ A.app({
                     subscription: Fields.reference('Покупка', 'Subscription').required(),
                     group: Fields.reference('Группа', 'Group'),
                     value: Fields.integer('Стоимость').readOnly(),
+                    currentValue: Fields.integer('Заплачено').required(),
                     bonus: Fields.integer('Бонус за покупку').readOnly()
                 },
                 beforeSave: function (Entity, Crud) {
@@ -116,51 +127,75 @@ A.app({
                     return Crud.crudFor('Client')
                         .readEntity(Entity.client.id)
                         .then(function (item) {
-                            var entityGroupId = Entity.group.id;
-                            if (item.group && item.group.id == entityGroupId ||
-                                item.groupExtra && item.groupExtra.id == entityGroupId ||
-                                item.groupExtra2 && item.groupExtra2.id == entityGroupId) {
-                                // клиент уже посещает группу
-                            } else {
-                                if (!item.group) {
-                                    Crud.crudFor('Client').updateEntity({
-                                        id: item.id,
-                                        group: Entity.group
-                                    })
-                                } else if (!item.groupExtra) {
-                                    Crud.crudFor('Client').updateEntity({
-                                        id: item.id,
-                                        groupExtra: Entity.group
-                                    })
-                                } else if (!item.groupExtra2) {
-                                    Crud.crudFor('Client').updateEntity({
-                                        id: item.id,
-                                        groupExtra2: Entity.group
-                                    })
+                            let entityGroupId = null;
+                            if (Entity.group) {
+                                entityGroupId = Entity.group.id;
+                                if (item.group && item.group.id == entityGroupId ||
+                                    item.groupExtra && item.groupExtra.id == entityGroupId ||
+                                    item.groupExtra2 && item.groupExtra2.id == entityGroupId) {
+                                    // клиент уже посещает группу
+                                } else {
+                                    if (!item.group) {
+                                        Crud.crudFor('Client').updateEntity({
+                                            id: item.id,
+                                            group: Entity.group
+                                        })
+                                    } else if (!item.groupExtra) {
+                                        Crud.crudFor('Client').updateEntity({
+                                            id: item.id,
+                                            groupExtra: Entity.group
+                                        })
+                                    } else if (!item.groupExtra2) {
+                                        Crud.crudFor('Client').updateEntity({
+                                            id: item.id,
+                                            groupExtra2: Entity.group
+                                        })
+                                    }
                                 }
                             }
 
-                            Crud.crudFor('Group')
-                                .readEntity(entityGroupId)
-                                .then(function (item) {
-                                    var clients = item.clients;
-                                    var currentClientName = Entity.client.name;
-                                    if (clients) {
-                                        if (clients.indexOf(Entity.client.name) > -1) {
-                                            // клиент есть в списке группы
+                            var debt = item.debt || 0;
+                            Crud.crudFor('Client').updateEntity({
+                                id: item.id,
+                                debt: debt + (Entity.value - Entity.currentValue)
+                            });
+
+                            if (entityGroupId !== null) {
+                                Crud.crudFor('Group')
+                                    .readEntity(entityGroupId)
+                                    .then(function (item) {
+                                        var clients = item.clients || '';
+                                        var currentClientName = Entity.client.name;
+                                        if (clients) {
+                                            if (clients.indexOf(Entity.client.name) > -1) {
+                                                // клиент есть в списке группы
+                                            } else {
+                                                clients += currentClientName + '\n';
+                                            }
                                         } else {
-                                            clients += currentClientName + '\n';
+                                            clients = currentClientName + '\n';
                                         }
-                                    } else {
-                                        clients = currentClientName + '\n';
-                                    }
-                                    Crud.crudFor('Group').updateEntity({
-                                        id: item.id,
-                                        clients: clients,
-                                        clientsCount: GroupService.getClientsCount(item)
-                                    });
-                                })
+                                        let groupEntity = {
+                                            id: item.id,
+                                            clients: clients,
+                                            clientsCount: GroupService.getClientsCount(clients)
+                                        };
+                                        Console.log(groupEntity);
+                                        Crud.crudFor('Group').updateEntity(groupEntity);
+                                    })
+                            }
                         })
+                },
+                beforeDelete: function (Entity, Crud, Console) {
+                    return Crud.crudFor('Client')
+                        .readEntity(Entity.client.id)
+                        .then(function (item) {
+                            var debt = item.debt || 0;
+                            Crud.crudFor('Client').updateEntity({
+                                id: item.id,
+                                debt: debt - Entity.value
+                            });
+                        });
                 }
             }
         }
