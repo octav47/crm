@@ -117,7 +117,7 @@ A.app({
                         .then(function (item) {
                             Entity.value = item.value;
                             Entity.bonus = item.value * 0.1;
-                            var expireDate = Entity.date;
+                            let expireDate = Entity.date;
                             expireDate = new Date(expireDate);
                             expireDate.setDate(expireDate.getDate() + item.duration);
                             Entity.expireDate = expireDate;
@@ -154,7 +154,7 @@ A.app({
                                 }
                             }
 
-                            var debt = item.debt || 0;
+                            let debt = item.debt || 0;
                             Crud.crudFor('Client').updateEntity({
                                 id: item.id,
                                 debt: debt + (Entity.value - Entity.currentValue)
@@ -164,8 +164,8 @@ A.app({
                                 Crud.crudFor('Group')
                                     .readEntity(entityGroupId)
                                     .then(function (item) {
-                                        var clients = item.clients || '';
-                                        var currentClientName = Entity.client.name;
+                                        let clients = item.clients || '';
+                                        let currentClientName = Entity.client.name;
                                         if (clients) {
                                             if (clients.indexOf(Entity.client.name) > -1) {
                                                 // клиент есть в списке группы
@@ -190,7 +190,7 @@ A.app({
                     return Crud.crudFor('Client')
                         .readEntity(Entity.client.id)
                         .then(function (item) {
-                            var debt = item.debt || 0;
+                            let debt = item.debt || 0;
                             Crud.crudFor('Client').updateEntity({
                                 id: item.id,
                                 debt: debt - Entity.value
@@ -202,11 +202,11 @@ A.app({
     }
 });
 
-var GroupService = {
+let GroupService = {
     getClientsCount: function (clientsTextAreaValue) {
-        var clientsNames = clientsTextAreaValue.split('\n');
-        var result = [];
-        for (var e of clientsNames) {
+        let clientsNames = clientsTextAreaValue.split('\n');
+        let result = [];
+        for (let e of clientsNames) {
             if (e != '') {
                 result.push(e);
             }
